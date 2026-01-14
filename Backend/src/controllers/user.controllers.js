@@ -1,5 +1,6 @@
 import asyncHandler from 'express-async-handler'
 import User from '../models/user.model.js';
+import bcrypt from 'bcryptjs'
 
 /* Register User */
 export const registerUser = asyncHandler(async (req, res) => {
@@ -24,12 +25,17 @@ export const registerUser = asyncHandler(async (req, res) => {
 
     }
 
+     //hashed password
+    const hashPassword = await bcrypt.hash(password,10)
+    console.log("hashpassword:",hashPassword);
+    
+
      // Create user
     const user = await User.create({
         firstName,
         lastName,
         email,
-        password // hashed later
+        password :hashPassword
     })
 
      res.status(201).json({

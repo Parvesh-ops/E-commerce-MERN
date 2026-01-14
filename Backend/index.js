@@ -14,7 +14,7 @@ const PORT = process.env.PORT
 app.use(express.json())
 
 //routes
-app.use('/api',userRoutes)
+app.use('/api/v1/user',userRoutes)
 
 
 //Global Error Middleware

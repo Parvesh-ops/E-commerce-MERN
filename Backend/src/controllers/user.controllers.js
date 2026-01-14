@@ -23,4 +23,22 @@ export const registerUser = asyncHandler(async (req, res) => {
         throw new Error("Email already exist");
 
     }
+
+     // Create user
+    const user = await User.create({
+        firstName,
+        lastName,
+        email,
+        password // hashed later
+    })
+
+     res.status(201).json({
+        success: true,
+        message: "User registered successfully",
+        user: {
+            id: user._id,
+            email: user.email,
+            firstName: user.firstName
+        }
+    })
 })

@@ -42,7 +42,7 @@ export const registerUser = asyncHandler(async (req, res) => {
 
     //token 
     // Generate verification token
-    const token = jwt.sign({ id: savedUser._id }, process.env.SECRET_KEY, { expiresIn: '10m' })
+    const token = jwt.sign({ id: savedUser._id }, process.env.SECRET_KEY, { expiresIn: '60m' })
     // Send verification email
     //  verifyEmail(token, email)  //from email.verify.js
      savedUser.token =token
@@ -59,6 +59,49 @@ export const registerUser = asyncHandler(async (req, res) => {
     })
 })
 
-export const verifyUser = asyncHandler(async (req,res) => {
-    
+
+export const verifyUser = asyncHandler(async (req, res) => {
+    const authHeader = req.headers.authorization
+
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+        res.status(401)
+        throw new Error("Authorization token is missing or invalid")
+    }
+
+    // Get token
+    const token = authHeader.split(' ')[1] // lloks like -> [Bearer, 884cakks09jd]
+
+    let decoded
+    try {
+        decoded = jwt.verify(token, process.env.SECRET_KEY)
+    } catch (error) {
+        if (error.name === 'TokenExpiredError') {
+            return res.status(400).json({
+                success: false,
+                message: "The verification token has expired"
+            })
+        } else {
+            return res.status(401).json({
+                success: false,
+                message: "Invalid token"
+            })
+        }
+    }
+
+    // Find user
+    const user = await User.findById(decoded.id)
+    if (!user) {
+        res.status(404)
+        throw new Error("User not found")
+    }
+
+    // Update user verification status
+    user.token = null
+    user.isVerified = true
+    await user.save()
+
+    res.json({
+        success: true,
+        message: "User verified successfully"
+    })
 })

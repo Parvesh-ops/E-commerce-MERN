@@ -1,6 +1,8 @@
 import asyncHandler from 'express-async-handler'
 import User from '../models/user.model.js';
 import bcrypt from 'bcryptjs'
+import jwt from 'jsonwebtoken'
+// import { verifyEmail } from '../utils/email.verify.js';
 
 /* Register User */
 export const registerUser = asyncHandler(async (req, res) => {
@@ -25,26 +27,38 @@ export const registerUser = asyncHandler(async (req, res) => {
 
     }
 
-     //hashed password
-    const hashPassword = await bcrypt.hash(password,10)
-    console.log("hashpassword:",hashPassword);
-    
+    //hashed password
+    const hashPassword = await bcrypt.hash(password, 10)
+    console.log("hashpassword:", hashPassword);
 
-     // Create user
-    const user = await User.create({
+
+    // saved user
+    const savedUser = await User.create({
         firstName,
         lastName,
         email,
-        password :hashPassword
+        password: hashPassword
     })
 
-     res.status(201).json({
+    //token 
+    // Generate verification token
+    const token = jwt.sign({ id: savedUser._id }, process.env.SECRET_KEY, { expiresIn: '10m' })
+    // Send verification email
+    //  verifyEmail(token, email)  //from email.verify.js
+     savedUser.token =token
+
+    res.status(201).json({
         success: true,
         message: "User registered successfully",
         user: {
-            id: user._id,
-            email: user.email,
-            firstName: user.firstName
+            id: savedUser._id,
+            email: savedUser.email,
+            firstName: savedUser.firstName,
+            token
         }
     })
+})
+
+export const verifyUser = asyncHandler(async (req,res) => {
+    
 })

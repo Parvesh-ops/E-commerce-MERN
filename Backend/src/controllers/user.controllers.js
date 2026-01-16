@@ -2,6 +2,7 @@ import asyncHandler from 'express-async-handler'
 import User from '../models/user.model.js';
 import bcrypt from 'bcryptjs'
 import jwt from 'jsonwebtoken'
+import { Session } from '../models/session.model.js';
 // import { verifyEmail } from '../utils/email.verify.js';
 
 /* Register User */
@@ -145,5 +146,77 @@ export const reVerify = asyncHandler(async (req, res) => {
     res.status(200).json({
         success: true,
         message: "Verification email sent again successfully"
+    })
+})
+
+/* Login */
+
+export const login = asyncHandler(async (req, res) => {
+    const { email, password } = req.body
+
+    if (!email || !password) {
+        res.status(400)
+        throw new Error("All fields are required")
+    }
+
+    const existingUser = await User.findOne({ email })
+    if (!existingUser) {
+        res.status(401)
+        throw new Error("User not found. Please register.")
+    }
+
+    const passwordMatch = await bcrypt.compare(password, existingUser.password)
+    if (!passwordMatch) {
+        res.status(401)
+        throw new Error("Invalid password")
+    }
+
+    if (!existingUser.isVerified) {
+        res.status(401)
+        throw new Error("User is not verified. Please verify your email.")
+    }
+
+    //generate jwt token
+    const accessToken = jwt.sign(
+        { id: existingUser._id, },
+        process.env.SECRET_KEY,
+        { expiresIn: '10d' }
+    )
+
+    const refreshToken = jwt.sign(
+        { id: existingUser._id, },
+        process.env.SECRET_KEY,
+        { expiresIn: '20d' }
+    )
+
+    existingUser.isLoggedIn = true
+    await existingUser.save()
+
+    //session handling check if session already exists and delete
+    const existingSession = await Session.findOne({ userId: existingUser._id })
+    if (existingSession) {
+        await Session.deleteOne({ userId: existingUser._id })
+    }
+
+    //create new session -> session.model.js
+    await Session.create({
+        userId: existingUser._id,
+        returningToken: refreshToken,
+        accessToken: accessToken,
+    })
+
+    // ✅ SEND RESPONSE
+    res.status(200).json({
+        success: true,
+        message: "Login successful",
+        user: {
+            id: existingUser._id,
+            email: existingUser.email,
+            role: existingUser.role
+        },
+        tokens: {
+            accessToken,
+            refreshToken
+        }
     })
 })

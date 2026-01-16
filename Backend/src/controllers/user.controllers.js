@@ -220,3 +220,17 @@ export const login = asyncHandler(async (req, res) => {
         }
     })
 })
+
+/* Logout */
+export const logout =asyncHandler( async (req,res) => {
+    const { userId } = req.id;
+    await Session.deleteOne({ userId });  
+    await User.findByIdAndUpdate(userId, { isLoggedIn: false });
+
+    res.status(200).json({
+        success: true,
+        message: "Logout successful"
+    })
+
+    
+})

@@ -45,7 +45,7 @@ export const registerUser = asyncHandler(async (req, res) => {
     const token = jwt.sign({ id: savedUser._id }, process.env.SECRET_KEY, { expiresIn: '60m' })
     // Send verification email
     //  verifyEmail(token, email)  //from email.verify.js
-     savedUser.token =token
+    savedUser.token = token
 
     res.status(201).json({
         success: true,
@@ -59,7 +59,7 @@ export const registerUser = asyncHandler(async (req, res) => {
     })
 })
 
-
+/* Verify user */
 export const verifyUser = asyncHandler(async (req, res) => {
     const authHeader = req.headers.authorization
 
@@ -103,5 +103,47 @@ export const verifyUser = asyncHandler(async (req, res) => {
     res.json({
         success: true,
         message: "User verified successfully"
+    })
+})
+
+/* reVerify */
+
+export const reVerify = asyncHandler(async (req, res) => {
+    const { email } = req.body
+
+    if (!email) {
+        res.status(400)
+        throw new Error("Email is required")
+    }
+
+    const user = await User.findOne({ email })
+    if (!user) {
+        res.status(404)
+        throw new Error("User not found")
+    }
+
+    // If already verified
+    if (user.isVerified) {
+        res.status(400)
+        throw new Error("User is already verified")
+    }
+
+    // Generate new token
+    const token = jwt.sign(
+        { id: user._id },
+        process.env.SECRET_KEY,
+        { expiresIn: '60m' }
+    )
+
+    // Save token in DB
+    user.token = token
+    await user.save()
+
+    // Send verification email (IMPORTANT: await)
+    await verifyEmail(token, email)
+
+    res.status(200).json({
+        success: true,
+        message: "Verification email sent again successfully"
     })
 })
